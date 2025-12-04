@@ -22,7 +22,7 @@ func main() {
 	relay.On.Event = Save
 	relay.On.Req = Query
 
-	if err := relay.StartAndServe(ctx, "localhost:3334"); err != nil {
+	if err := relay.StartAndServe(ctx, "localhost:1223"); err != nil {
 		panic(err)
 	}
 }

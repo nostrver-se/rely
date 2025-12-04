@@ -25,7 +25,7 @@ func main() {
 	defer cancel()
 
 	relay := rely.NewRelay()
-	relay.Reject.Connection = append(relay.Reject.Connection, BadIP)
+	relay.Reject.Connection.Prepend(BadIP)
 	relay.On.Connect = PrintIP
 
 	if err := relay.StartAndServe(ctx, "localhost:3334"); err != nil {
@@ -34,7 +34,7 @@ func main() {
 }
 
 func BadIP(s rely.Stats, req *http.Request) error {
-	IP := rely.IP(req)
+	IP := rely.GetIP(req).Group()
 	if _, ok := counter[IP]; !ok {
 		// this is a new IP
 		counter[IP] = &atomic.Int32{}

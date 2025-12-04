@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net"
-	"net/http"
 	"runtime"
 	"strings"
 
@@ -13,23 +11,16 @@ import (
 	"github.com/nbd-wtf/go-nostr"
 )
 
-// Extracts the IP address from the http request.
-func IP(r *http.Request) string {
-	if IP := r.Header.Get("X-Real-IP"); IP != "" {
-		return IP
+// normalizeURL removes the protocol scheme (e.g., "https://") if present,
+// returning only the host and path (e.g., "example.com/abc").
+func normalizeURL(url string) string {
+	url = strings.TrimSpace(url)
+	url = strings.TrimSuffix(url, "/")
+	index := strings.Index(url, "://")
+	if index != -1 {
+		return url[index+3:]
 	}
-
-	if IPs := r.Header.Get("X-Forwarded-For"); IPs != "" {
-		first := strings.Split(IPs, ",")[0]
-		return strings.TrimSpace(first)
-	}
-
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		return r.RemoteAddr // fallback: return as-is
-	}
-
-	return host
+	return url
 }
 
 // ApplyBudget adjusts the Limit of each filter in-place so that the total does not exceed the given budget.

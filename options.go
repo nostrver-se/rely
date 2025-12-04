@@ -3,7 +3,6 @@ package rely
 import (
 	"log/slog"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/goccy/go-json"
@@ -12,21 +11,15 @@ import (
 	"github.com/nbd-wtf/go-nostr/nip11"
 )
 
-const (
-	writeWait      time.Duration = 10 * time.Second
-	pongWait       time.Duration = 60 * time.Second
-	pingPeriod     time.Duration = 45 * time.Second
-	maxMessageSize int64         = 500000 // 0.5MB
-	bufferSize     int           = 1024   // 1KB
-)
-
 type Option func(*Relay)
 
 // WithDomain sets the relay's official domain name (e.g., "example.com").
 // This is mandatory for validating NIP-42 authentication.
 // If this is unset, NIP-42 authentication will fail, and a warning will be logged.
 func WithDomain(d string) Option {
-	return func(r *Relay) { r.domain = strings.TrimSpace(d) }
+	return func(r *Relay) {
+		r.domain = normalizeURL(d)
+	}
 }
 
 // WithInfo sets a custom NIP-11 (Relay Information Document) JSON body returned
@@ -77,6 +70,17 @@ func WithClientResponseLimit(n int) Option {
 	return func(r *Relay) { r.responseLimit = n }
 }
 
+// WithMaxClientPubkeys sets the maximum number of unique pubkeys with which a client can be authenticated at the same time.
+func WithMaxClientPubkeys(n int) Option {
+	return func(r *Relay) { r.maxClientPubkeys = n }
+}
+
+// WithoutMultiAuth limits to 1 the maximum number of unique pubkeys with which a client can be authenticated at the same time.
+// It's equivalent to WithMaxClientPubkeys(1).
+func WithoutMultiAuth() Option {
+	return func(r *Relay) { r.maxClientPubkeys = 1 }
+}
+
 // WithReadBufferSize sets the read buffer size (in bytes) for the underlying websocket connection upgrader.
 func WithReadBufferSize(s int) Option {
 	return func(r *Relay) { r.upgrader.ReadBufferSize = s }
@@ -124,6 +128,10 @@ type systemSettings struct {
 	// and sent to the client, enforcing per-client backpressure and preventing overproduction of responses.
 	responseLimit int
 
+	// the maximum number of unique authenticated pubkeys per client.
+	// To specify it, use [WithMaxClientPubkeys].
+	maxClientPubkeys int
+
 	// the relay domain name (e.g., "example.com") used to validate the NIP-42 "relay" tag.
 	// It should be explicitly set with [WithDomain]; if unset, a warning will be logged and NIP-42 will fail.
 	domain string
@@ -134,8 +142,9 @@ type systemSettings struct {
 
 func newSystemSettings() systemSettings {
 	return systemSettings{
-		responseLimit: 1000,
-		info:          newRelayInfo(),
+		responseLimit:    1000,
+		maxClientPubkeys: 64,
+		info:             newRelayInfo(),
 	}
 }
 
@@ -149,7 +158,6 @@ func newRelayInfo() []byte {
 	if err != nil {
 		panic("failed to marshal default NIP-11 document: " + err.Error())
 	}
-
 	return json
 }
 
@@ -164,14 +172,14 @@ type websocketSettings struct {
 func newWebsocketSettings() websocketSettings {
 	return websocketSettings{
 		upgrader: ws.Upgrader{
-			ReadBufferSize:  bufferSize,
-			WriteBufferSize: bufferSize,
+			ReadBufferSize:  1024, // 1KB
+			WriteBufferSize: 1024, // 1KB
 			CheckOrigin:     func(r *http.Request) bool { return true },
 		},
-		writeWait:      writeWait,
-		pongWait:       pongWait,
-		pingPeriod:     pingPeriod,
-		maxMessageSize: maxMessageSize,
+		writeWait:      10 * time.Second,
+		pongWait:       60 * time.Second,
+		pingPeriod:     45 * time.Second,
+		maxMessageSize: 500_000, // 0.5MB
 	}
 }
 
@@ -181,15 +189,12 @@ func (r *Relay) validate() {
 	if r.pingPeriod < 1*time.Second {
 		panic("ping period must be greater than 1s to function reliably")
 	}
-
 	if r.pongWait <= r.pingPeriod {
 		panic("pong wait must be greater than ping period to function reliably")
 	}
-
 	if r.writeWait < 1*time.Second {
 		panic("write wait must be greater than 1s to function reliably")
 	}
-
 	if r.maxMessageSize < 512 {
 		panic("max message size must be greater than 512 bytes to accept nostr events")
 	}
@@ -197,11 +202,16 @@ func (r *Relay) validate() {
 	if r.processor.maxWorkers < 1 {
 		panic("max processors must be greater than 1 to correctly process from the queue")
 	}
+	if cap(r.processor.queue) < 1 {
+		panic("processor queue must have a capacity greater than 1 to correctly handle client requests")
+	}
 
 	if r.responseLimit < 1 {
 		panic("client response limit must be greater than 1 to allow responses to be sent")
 	}
-
+	if r.maxClientPubkeys < 1 {
+		panic("max authed pubkeys per client must be greater than 1 for NIP-42 to work")
+	}
 	if r.domain == "" {
 		r.log.Warn("you must set the relay's domain to validate NIP-42 auth")
 	}

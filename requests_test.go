@@ -344,7 +344,7 @@ func TestValidateAuth(t *testing.T) {
 		},
 		{
 			name:     "relay tag is different",
-			auth:     authRequest{Event: Signed(nostr.Event{Kind: 22242, CreatedAt: nostr.Now(), Tags: nostr.Tags{{"challenge", "challenge"}, {"relay", "different"}}})},
+			auth:     authRequest{Event: Signed(nostr.Event{Kind: 22242, CreatedAt: nostr.Now(), Tags: nostr.Tags{{"challenge", "challenge"}, {"relay", "example.com.evil.website"}}})},
 			expected: ErrInvalidAuthRelay,
 		},
 		{
@@ -371,16 +371,12 @@ func TestValidateAuth(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			client := &client{relay: &Relay{}}
-			client.challenge = "challenge"
-			client.relay.domain = "example.com"
-
-			requestErr := client.ValidateAuth(test.auth)
-			var err error
-			if requestErr != nil {
-				err = requestErr.Err
+			auth := &authState{
+				challenge: "challenge",
+				domain:    "example.com",
 			}
 
+			err := auth.Validate(test.auth)
 			if !errors.Is(err, test.expected) {
 				t.Fatalf("expected error %v, got %v", test.expected, err)
 			}

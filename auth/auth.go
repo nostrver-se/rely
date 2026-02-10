@@ -88,6 +88,7 @@ func (s *State) Add(pk string) error {
 
 // Request is a normalized struct representing an authentication event (kind 22242)
 type Request struct {
+	ID        string
 	CreatedAt time.Time
 	Challenge string
 	Relay     string
@@ -123,6 +124,7 @@ func Parse(d *json.Decoder) (Request, error) {
 	}
 
 	return Request{
+		ID:        e.ID,
 		CreatedAt: e.CreatedAt.Time(),
 		Challenge: challenge,
 		Relay:     relay,

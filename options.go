@@ -81,6 +81,18 @@ func WithoutMultiAuth() Option {
 	return func(r *Relay) { r.settings.Auth.MaxPubkeys = 1 }
 }
 
+// WithAuthChallengeBytes sets the number of random bytes used to generate AUTH challenges.
+// Must be greater than 0. Default is 16 bytes.
+func WithAuthChallengeBytes(n uint8) Option {
+	return func(r *Relay) { r.settings.Auth.ChallengeBytes = n }
+}
+
+// WithAuthTimeTolerance sets the maximum allowed clock skew when validating AUTH created_at.
+// Must be greater than 0. Default is 1 minute.
+func WithAuthTimeTolerance(d time.Duration) Option {
+	return func(r *Relay) { r.settings.Auth.TimeTolerance = d }
+}
+
 // WithReadBufferSize sets the read buffer size (in bytes) for the underlying websocket connection upgrader.
 func WithReadBufferSize(s int) Option {
 	return func(r *Relay) { r.settings.WS.upgrader.ReadBufferSize = s }

@@ -14,12 +14,20 @@ import (
 
 type Option func(*Relay)
 
-// WithDomain sets the relay's official domain name (e.g., "relay.example.com").
-// This is mandatory for validating NIP-42 authentication.
-// If this is unset, NIP-42 authentication will fail, and a warning will be logged.
-func WithDomain(d string) Option {
+// WithAuthURL sets the relay's canonical URL (host + path) used to validate NIP-42 authentication.
+// The "relay" tag in AUTH events must match this value for authentication to succeed.
+// Scheme (ws/wss) and port are ignored as they are transport details.
+//
+// Examples: "relay.example.com", "example.com/relay", "wss://example.com/nostr"
+//
+// This is mandatory for NIP-42 authentication. If unset, all AUTH attempts will fail.
+func WithAuthURL(url string) Option {
 	return func(r *Relay) {
-		r.settings.Auth.Domain = normalizeURL(d)
+		canonical, err := auth.CanonicalURL(url)
+		if err != nil {
+			panic("invalid auth URL: " + err.Error())
+		}
+		r.settings.Auth.URL = canonical
 	}
 }
 

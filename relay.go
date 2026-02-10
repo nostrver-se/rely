@@ -41,13 +41,13 @@ type Relay struct {
 }
 
 // NewRelay creates a new Relay instance with sane defaults and customizable internal behavior.
-// Customize its structure with functional options (e.g., [WithDomain], [WithQueueCapacity]).
+// Customize its structure with functional options (e.g., [WithAuthURL], [WithQueueCapacity]).
 // Customize its behaviour by defining On.Event, On.Req and other [Hooks].
 //
 // Example:
 //
 //	relay := NewRelay(
-//	    WithDomain("example.com"), // required for proper NIP-42 validation
+//	    WithAuthURL("example.com"), // required for proper NIP-42 validation
 //	    WithQueueCapacity(5000),
 //	    WithPingPeriod(30 * time.Second),
 //	)

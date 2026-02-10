@@ -43,8 +43,8 @@ func main() {
 	limiter = NewLimiter(ctx)
 
 	relay := rely.NewRelay(
-		rely.WithDomain("relay.example.com"), // required for validating NIP-42 auth
-		rely.WithoutMultiAuth(),              // enforcing max one pubkey per client
+		rely.WithAuthURL("relay.example.com"), // required for validating NIP-42 auth
+		rely.WithoutMultiAuth(),               // enforcing max one pubkey per client
 	)
 
 	relay.Reject.Connection.Prepend(func(_ rely.Stats, r *http.Request) error {

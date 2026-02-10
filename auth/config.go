@@ -11,8 +11,10 @@ type Config struct {
 	// Default is 64.
 	MaxPubkeys int
 
-	// Domain is the domain name of the relay, e.g. "relay.example.com".
-	Domain string
+	// URL is the canonical relay URL (host + path) that must match the "relay" tag in AUTH events.
+	// Examples: "relay.example.com", "example.com/relay"
+	// Scheme and port are ignored as they are transport details.
+	URL string
 
 	// ChallengeBytes is the number of bytes in the challenge string.
 	// Default is 16 bytes.

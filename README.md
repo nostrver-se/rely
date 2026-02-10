@@ -41,7 +41,7 @@ Fine-tune core parameters using functional options:
 
 ```golang
 relay := rely.NewRelay(
-	rely.WithDomain("myDomain.com"),	// required for NIP-42 validation
+	rely.WithAuthURL("myDomain.com"),	// required for NIP-42 validation
 	rely.WithLogger(myLogger),			// configure the relay logger
 	rely.WithInfo(myRelayInfo)			// set up nip-11 information document
 )

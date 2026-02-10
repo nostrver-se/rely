@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -28,6 +29,7 @@ var (
 	ErrInvalidChallenge      = errors.New(`invalid AUTH challenge`)
 	ErrInvalidRelay          = errors.New(`invalid AUTH relay`)
 	ErrTooManyAuthed         = errors.New("trying to auth with too many pubkeys")
+	ErrInvalidRelayURL       = errors.New("invalid relay URL format")
 )
 
 // State manages the authentication state of a client.
@@ -69,12 +71,14 @@ func (s *State) Pubkeys() []string {
 	return s.pubkeys.Items()
 }
 
+// IsAuthed returns true if there are any authenticated pubkeys.
 func (s *State) IsAuthed() bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.pubkeys.Size() > 0
 }
 
+// Add adds a new pubkey to the authentication state.
 func (s *State) Add(pk string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -142,7 +146,12 @@ func (s *State) Validate(e Request) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if s.config.Domain == "" || normalizeURL(e.Relay) != s.config.Domain {
+	canonical, err := CanonicalURL(e.Relay)
+	if err != nil {
+		return ErrInvalidRelay
+	}
+
+	if s.config.URL == "" || canonical != s.config.URL {
 		return ErrInvalidRelay
 	}
 	if s.challenge == "" || e.Challenge != s.challenge {
@@ -160,14 +169,43 @@ func findTag(tags nostr.Tags, key string) string {
 	return ""
 }
 
-// normalizeURL removes the protocol scheme (e.g., "https://") if present,
-// returning only the host and path (e.g., "example.com/abc").
-func normalizeURL(url string) string {
-	url = strings.TrimSpace(url)
-	url = strings.TrimSuffix(url, "/")
-	index := strings.Index(url, "://")
-	if index != -1 {
-		return url[index+3:]
+// CanonicalURL returns the canonical form of a relay URL consisting of
+// lowercase hostname and normalized path. Scheme and port are ignored as
+// they are transport details, not part of the relay's identity.
+//
+// Examples:
+//   - "wss://Example.com/relay" -> "example.com/relay"
+//   - "ws://example.com:8080/relay/" -> "example.com/relay"
+//   - "wss://example.com:443" -> "example.com"
+//
+// URLs with userinfo (e.g., "user@host") are rejected.
+func CanonicalURL(rawURL string) (string, error) {
+	rawURL = strings.TrimSpace(rawURL)
+	if rawURL == "" {
+		return "", errors.New("empty url")
 	}
-	return url
+
+	if !strings.Contains(rawURL, "://") {
+		rawURL = "wss://" + rawURL
+	}
+
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return "", fmt.Errorf("%w: %v", ErrInvalidRelayURL, err)
+	}
+
+	if parsed.User != nil {
+		// reject urls with user info
+		return "", fmt.Errorf("%w: userinfo not allowed", ErrInvalidRelayURL)
+	}
+
+	host := parsed.Hostname()
+	host = strings.ToLower(host)
+	if host == "" {
+		return "", fmt.Errorf("%w: missing host", ErrInvalidRelayURL)
+	}
+
+	path := parsed.Path
+	path = strings.TrimSuffix(path, "/")
+	return host + path, nil
 }

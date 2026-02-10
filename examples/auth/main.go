@@ -24,7 +24,7 @@ func main() {
 	defer cancel()
 
 	relay := rely.NewRelay(
-		rely.WithDomain("relay.example.com"), // the domain must be set to correctly validate NIP-42
+		rely.WithAuthURL("relay.example.com"), // the auth URL must be set to correctly validate NIP-42
 	)
 
 	relay.Reject.Req.Append(UnauthedDMs)

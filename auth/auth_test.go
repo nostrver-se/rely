@@ -65,11 +65,12 @@ func TestParseRequest(t *testing.T) {
 }
 
 func TestValidateRequest(t *testing.T) {
+	canonical, _ := CanonicalURL("example.com")
 	state := State{
 		pubkeys:   smallset.New[string](10),
 		challenge: "challenge",
 		config: Config{
-			Domain:        "example.com",
+			URL:           canonical,
 			TimeTolerance: time.Minute,
 		},
 	}
@@ -121,4 +122,289 @@ func WithBadSignature(e nostr.Event) *nostr.Event {
 	ev := Signed(e)
 	ev.Sig = "bad"
 	return ev
+}
+
+func TestCanonicalURL(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+		wantErr  bool
+	}{
+		// Basic cases
+		{
+			name:     "simple domain",
+			input:    "example.com",
+			expected: "example.com",
+			wantErr:  false,
+		},
+		{
+			name:     "domain with wss scheme",
+			input:    "wss://example.com",
+			expected: "example.com",
+			wantErr:  false,
+		},
+		{
+			name:     "domain with ws scheme",
+			input:    "ws://example.com",
+			expected: "example.com",
+			wantErr:  false,
+		},
+		// Path cases
+		{
+			name:     "domain with path",
+			input:    "example.com/relay",
+			expected: "example.com/relay",
+			wantErr:  false,
+		},
+		{
+			name:     "domain with path and scheme",
+			input:    "wss://example.com/relay",
+			expected: "example.com/relay",
+			wantErr:  false,
+		},
+		{
+			name:     "domain with path and trailing slash",
+			input:    "wss://example.com/relay/",
+			expected: "example.com/relay",
+			wantErr:  false,
+		},
+		{
+			name:     "domain with nested path",
+			input:    "wss://example.com/nostr/relay",
+			expected: "example.com/nostr/relay",
+			wantErr:  false,
+		},
+		// Port cases (should be ignored)
+		{
+			name:     "domain with standard wss port",
+			input:    "wss://example.com:443",
+			expected: "example.com",
+			wantErr:  false,
+		},
+		{
+			name:     "domain with custom port",
+			input:    "wss://example.com:8080",
+			expected: "example.com",
+			wantErr:  false,
+		},
+		{
+			name:     "domain with port and path",
+			input:    "wss://example.com:8080/relay",
+			expected: "example.com/relay",
+			wantErr:  false,
+		},
+		{
+			name:     "ws with port 80",
+			input:    "ws://example.com:80/relay",
+			expected: "example.com/relay",
+			wantErr:  false,
+		},
+		// Case normalization
+		{
+			name:     "uppercase domain",
+			input:    "wss://Example.COM",
+			expected: "example.com",
+			wantErr:  false,
+		},
+		{
+			name:     "mixed case domain with path",
+			input:    "wss://Example.Com/Relay",
+			expected: "example.com/Relay",
+			wantErr:  false,
+		},
+		// IPv6 cases
+		{
+			name:     "ipv6 localhost",
+			input:    "wss://[::1]",
+			expected: "::1",
+			wantErr:  false,
+		},
+		{
+			name:     "ipv6 with port",
+			input:    "wss://[::1]:7777",
+			expected: "::1",
+			wantErr:  false,
+		},
+		{
+			name:     "ipv6 with path",
+			input:    "wss://[2001:db8::1]/relay",
+			expected: "2001:db8::1/relay",
+			wantErr:  false,
+		},
+		// Whitespace handling
+		{
+			name:     "leading and trailing whitespace",
+			input:    "  wss://example.com/relay  ",
+			expected: "example.com/relay",
+			wantErr:  false,
+		},
+		// Root path handling
+		{
+			name:     "root path with trailing slash",
+			input:    "wss://example.com/",
+			expected: "example.com",
+			wantErr:  false,
+		},
+		// Error cases
+		{
+			name:     "empty string",
+			input:    "",
+			expected: "",
+			wantErr:  true,
+		},
+		{
+			name:     "whitespace only",
+			input:    "   ",
+			expected: "",
+			wantErr:  true,
+		},
+		{
+			name:     "invalid URL",
+			input:    "://invalid",
+			expected: "",
+			wantErr:  true,
+		},
+		{
+			name:     "userinfo in URL (security)",
+			input:    "wss://user:pass@example.com",
+			expected: "",
+			wantErr:  true,
+		},
+		{
+			name:     "userinfo without password",
+			input:    "wss://user@example.com",
+			expected: "",
+			wantErr:  true,
+		},
+		{
+			name:     "userinfo with path",
+			input:    "wss://user@example.com/relay",
+			expected: "",
+			wantErr:  true,
+		},
+		{
+			name:     "scheme only",
+			input:    "wss://",
+			expected: "",
+			wantErr:  true,
+		},
+		// Real-world examples
+		{
+			name:     "nostr.band main relay",
+			input:    "wss://relay.nostr.band",
+			expected: "relay.nostr.band",
+			wantErr:  false,
+		},
+		{
+			name:     "nostr.band sub-relay with path",
+			input:    "wss://relay.nostr.band/all",
+			expected: "relay.nostr.band/all",
+			wantErr:  false,
+		},
+		{
+			name:     "damus relay",
+			input:    "wss://relay.damus.io",
+			expected: "relay.damus.io",
+			wantErr:  false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result, err := CanonicalURL(test.input)
+
+			if test.wantErr {
+				if err == nil {
+					t.Fatalf("expected error, got none")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if result != test.expected {
+				t.Fatalf("expected %q, got %q", test.expected, result)
+			}
+		})
+	}
+}
+
+func TestValidate(t *testing.T) {
+	state := State{
+		pubkeys:   smallset.New[string](10),
+		challenge: "test-challenge",
+		config: Config{
+			URL:           "relay.example.com/nostr",
+			TimeTolerance: time.Minute,
+		},
+	}
+
+	tests := []struct {
+		name      string
+		relayURL  string
+		shouldErr bool
+	}{
+		{
+			name:      "exact match",
+			relayURL:  "wss://relay.example.com/nostr",
+			shouldErr: false,
+		},
+		{
+			name:      "different scheme (ws)",
+			relayURL:  "ws://relay.example.com/nostr",
+			shouldErr: false,
+		},
+		{
+			name:      "different port",
+			relayURL:  "wss://relay.example.com:8080/nostr",
+			shouldErr: false,
+		},
+		{
+			name:      "different case",
+			relayURL:  "wss://Relay.Example.COM/nostr",
+			shouldErr: false,
+		},
+		{
+			name:      "with trailing slash",
+			relayURL:  "wss://relay.example.com/nostr/",
+			shouldErr: false,
+		},
+		{
+			name:      "different path",
+			relayURL:  "wss://relay.example.com/other",
+			shouldErr: true,
+		},
+		{
+			name:      "different host",
+			relayURL:  "wss://other.example.com/nostr",
+			shouldErr: true,
+		},
+		{
+			name:      "with userinfo (should fail)",
+			relayURL:  "wss://user@relay.example.com/nostr",
+			shouldErr: true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			req := Request{
+				ID:        "test-id",
+				Pubkey:    "test-pubkey",
+				CreatedAt: time.Now(),
+				Challenge: "test-challenge",
+				Relay:     test.relayURL,
+			}
+
+			err := state.Validate(req)
+			hasErr := (err != nil)
+
+			if hasErr != test.shouldErr {
+				t.Fatalf("expected error=%v, got error=%v", test.shouldErr, err)
+			}
+		})
+	}
 }

@@ -31,11 +31,10 @@ type Relay struct {
 	processor  *processor
 	stats
 
-	log *slog.Logger
-
 	Hooks
 	settings
 
+	log  *slog.Logger
 	wg   sync.WaitGroup
 	done chan struct{}
 }

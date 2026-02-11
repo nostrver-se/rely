@@ -186,7 +186,7 @@ More importantly, we have a [random stress test](https://github.com/pippellia-bt
 This section lists project and repositories that are using rely in production.
 
 - [ContextVM](https://github.com/ContextVM/contextvm-relay)
-- [Zapstore](https://github.com/zapstore/relay)
+- [Zapstore](https://github.com/zapstore/server)
 - [Vertex](https://github.com/vertex-lab/relay)
 - [NextBlock](https://primal.net/e/nevent1qqsy0nfg6tqzrtkaeggp7jm5y8c89jrcnd3z64a2fvhzqg4jgyefyucye2qfu)
 

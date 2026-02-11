@@ -34,24 +34,6 @@ func DefaultHooks() Hooks {
 	}
 }
 
-// Slice is an internal type used to simplify registration of hooks.
-type slice[T any] []T
-
-// Append adds hooks to the end of the slice, in the provided order.
-func (s *slice[T]) Append(hooks ...T) {
-	*s = append(*s, hooks...)
-}
-
-// Prepend adds hooks to the start of the slice, in the provided order.
-func (s *slice[T]) Prepend(hooks ...T) {
-	*s = append(hooks, *s...)
-}
-
-// Clear resets the slice, removing all registered hooks.
-func (s *slice[T]) Clear() {
-	*s = nil
-}
-
 // RejectHooks defines optional functions that can preemptively reject
 // certain actions before they are processed by the relay.
 //
@@ -222,4 +204,22 @@ func DisconnectOnDrops(maxDropped int) func(c Client) {
 			c.Disconnect()
 		}
 	}
+}
+
+// Slice is an internal type used to simplify registration of hooks.
+type slice[T any] []T
+
+// Append adds hooks to the end of the slice, in the provided order.
+func (s *slice[T]) Append(hooks ...T) {
+	*s = append(*s, hooks...)
+}
+
+// Prepend adds hooks to the start of the slice, in the provided order.
+func (s *slice[T]) Prepend(hooks ...T) {
+	*s = append(hooks, *s...)
+}
+
+// Clear resets the slice, removing all registered hooks.
+func (s *slice[T]) Clear() {
+	*s = nil
 }

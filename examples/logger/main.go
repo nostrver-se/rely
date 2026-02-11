@@ -27,20 +27,24 @@ func main() {
 		rely.WithLogger(logger),
 	)
 
-	relay.On.Event = Save
-	relay.On.Req = Query
+	relay.On.Event = LogEvent(logger)
+	relay.On.Req = LogReq(logger)
 
 	if err := relay.StartAndServe(ctx, "localhost:3334"); err != nil {
 		panic(err)
 	}
 }
 
-func Save(c rely.Client, e *nostr.Event) error {
-	logger.Info("received event", "event", e)
-	return nil
+func LogEvent(logger *slog.Logger) func(c rely.Client, e *nostr.Event) error {
+	return func(c rely.Client, e *nostr.Event) error {
+		logger.Info("received event", "ID", e.ID, "IP", c.IP().Group())
+		return nil
+	}
 }
 
-func Query(ctx context.Context, c rely.Client, f nostr.Filters) ([]nostr.Event, error) {
-	logger.Info("received filters", "filters", f)
-	return nil, nil
+func LogReq(logger *slog.Logger) func(ctx context.Context, c rely.Client, id string, f nostr.Filters) ([]nostr.Event, error) {
+	return func(ctx context.Context, c rely.Client, id string, f nostr.Filters) ([]nostr.Event, error) {
+		logger.Info("received req", "ID", id, "filters", len(f), "IP", c.IP().Group())
+		return nil, nil
+	}
 }

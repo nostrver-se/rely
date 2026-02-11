@@ -11,16 +11,16 @@ import (
 )
 
 var (
-	ErrGeneric         = errors.New(`the request must be a JSON array`)
-	ErrUnsupportedType = errors.New(`the request type must be one between 'EVENT', 'REQ', 'CLOSE', 'COUNT' and 'AUTH'`)
+	ErrGeneric         = errors.New(`the message must be a JSON array`)
+	ErrUnsupportedType = errors.New(`the message type must be one between 'EVENT', 'REQ', 'CLOSE', 'COUNT' and 'AUTH'`)
 
-	ErrInvalidEventRequest   = errors.New(`an EVENT request must follow this format: ['EVENT', {event_JSON}]`)
-	ErrInvalidEventID        = errors.New(`invalid event ID`)
-	ErrInvalidEventSignature = errors.New(`invalid event signature`)
+	ErrInvalidEvent    = errors.New(`an EVENT request must follow this format: ['EVENT', {event_JSON}]`)
+	ErrInvalidEventID  = errors.New(`invalid event ID`)
+	ErrInvalidEventSig = errors.New(`invalid event signature`)
 
-	ErrInvalidReqRequest     = errors.New(`a REQ request must follow this format: ['REQ', {subscription_id}, {filter1}, {filter2}, ...]`)
-	ErrInvalidCountRequest   = errors.New(`a COUNT request must follow this format: ['COUNT', {subscription_id}, {filter1}, {filter2}, ...]`)
-	ErrInvalidSubscriptionID = errors.New(`invalid subscription ID`)
+	ErrInvalidReq       = errors.New(`a REQ request must follow this format: ['REQ', {id}, {filter1}, {filter2}, ...]`)
+	ErrInvalidCount     = errors.New(`a COUNT request must follow this format: ['COUNT', {id}, {filter1}, {filter2}, ...]`)
+	ErrInvalidRequestID = errors.New(`invalid request ID`)
 )
 
 // Request is the abstraction that represents a client request that must be sent to the relay for processing.
@@ -114,7 +114,7 @@ func parseLabel(d *json.Decoder) (string, error) {
 func parseEvent(d *json.Decoder) (eventRequest, *requestError) {
 	event := eventRequest{Event: new(nostr.Event)}
 	if err := d.Decode(event.Event); err != nil {
-		return eventRequest{}, &requestError{Err: fmt.Errorf("%w: %w", ErrInvalidEventRequest, err)}
+		return eventRequest{}, &requestError{Err: fmt.Errorf("%w: %w", ErrInvalidEvent, err)}
 	}
 	return event, nil
 }
@@ -123,11 +123,11 @@ func parseReq(d *json.Decoder) (reqRequest, *requestError) {
 	req := reqRequest{}
 	err := d.Decode(&req.id)
 	if err != nil {
-		return reqRequest{}, &requestError{Err: fmt.Errorf("%w: %w", ErrInvalidSubscriptionID, err)}
+		return reqRequest{}, &requestError{Err: fmt.Errorf("%w: %w", ErrInvalidRequestID, err)}
 	}
 
 	if len(req.id) < 1 || len(req.id) > 64 {
-		return reqRequest{}, &requestError{ID: req.id, Err: ErrInvalidSubscriptionID}
+		return reqRequest{}, &requestError{ID: req.id, Err: ErrInvalidRequestID}
 	}
 
 	req.Filters, err = parseFilters(d)
@@ -136,7 +136,7 @@ func parseReq(d *json.Decoder) (reqRequest, *requestError) {
 	}
 
 	if len(req.Filters) == 0 {
-		return reqRequest{}, &requestError{ID: req.id, Err: ErrInvalidReqRequest}
+		return reqRequest{}, &requestError{ID: req.id, Err: ErrInvalidReq}
 	}
 	return req, nil
 }
@@ -145,11 +145,11 @@ func parseCount(d *json.Decoder) (countRequest, *requestError) {
 	count := countRequest{}
 	err := d.Decode(&count.id)
 	if err != nil {
-		return countRequest{}, &requestError{Err: fmt.Errorf("%w: %w", ErrInvalidSubscriptionID, err)}
+		return countRequest{}, &requestError{Err: fmt.Errorf("%w: %w", ErrInvalidRequestID, err)}
 	}
 
 	if len(count.id) < 1 || len(count.id) > 64 {
-		return countRequest{}, &requestError{ID: count.id, Err: ErrInvalidSubscriptionID}
+		return countRequest{}, &requestError{ID: count.id, Err: ErrInvalidRequestID}
 	}
 
 	count.Filters, err = parseFilters(d)
@@ -158,7 +158,7 @@ func parseCount(d *json.Decoder) (countRequest, *requestError) {
 	}
 
 	if len(count.Filters) == 0 {
-		return countRequest{}, &requestError{ID: count.id, Err: ErrInvalidCountRequest}
+		return countRequest{}, &requestError{ID: count.id, Err: ErrInvalidCount}
 	}
 	return count, nil
 }
@@ -166,11 +166,11 @@ func parseCount(d *json.Decoder) (countRequest, *requestError) {
 func parseClose(d *json.Decoder) (closeRequest, *requestError) {
 	close := closeRequest{}
 	if err := d.Decode(&close.ID); err != nil {
-		return closeRequest{}, &requestError{Err: fmt.Errorf("%w: %w", ErrInvalidSubscriptionID, err)}
+		return closeRequest{}, &requestError{Err: fmt.Errorf("%w: %w", ErrInvalidRequestID, err)}
 	}
 
 	if len(close.ID) < 1 || len(close.ID) > 64 {
-		return closeRequest{}, &requestError{ID: close.ID, Err: ErrInvalidSubscriptionID}
+		return closeRequest{}, &requestError{ID: close.ID, Err: ErrInvalidRequestID}
 	}
 	return close, nil
 }
@@ -181,7 +181,7 @@ func parseFilters(d *json.Decoder) (nostr.Filters, error) {
 
 	for d.More() {
 		if err := d.Decode(&filter); err != nil {
-			return nil, fmt.Errorf("%w: failed to decode filter: %w", ErrInvalidReqRequest, err)
+			return nil, fmt.Errorf("failed to decode filter: %w", err)
 		}
 
 		if filter.LimitZero || filter.Limit < 0 {

@@ -36,7 +36,7 @@ func main() {
 	}
 }
 
-func UnauthedDMs(client rely.Client, filters nostr.Filters) error {
+func UnauthedDMs(client rely.Client, id string, filters nostr.Filters) error {
 	for _, filter := range filters {
 		if !slices.Contains(filter.Kinds, 4) {
 			continue

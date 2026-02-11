@@ -88,7 +88,7 @@ func Save(c rely.Client, e *nostr.Event) error {
 	return nil
 }
 
-func Query(ctx context.Context, c rely.Client, f nostr.Filters) ([]nostr.Event, error) {
+func Query(ctx context.Context, c rely.Client, id string, f nostr.Filters) ([]nostr.Event, error) {
 	log.Printf("received filters %v", f)
 	return nil, nil
 }

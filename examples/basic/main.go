@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 
@@ -19,20 +19,20 @@ func main() {
 	defer cancel()
 
 	relay := rely.NewRelay()
-	relay.On.Event = Save
-	relay.On.Req = Query
+	relay.On.Event = LogEvent
+	relay.On.Req = LogReq
 
 	if err := relay.StartAndServe(ctx, "localhost:3334"); err != nil {
 		panic(err)
 	}
 }
 
-func Save(c rely.Client, e *nostr.Event) error {
-	log.Printf("received event: %v", e)
+func LogEvent(c rely.Client, e *nostr.Event) error {
+	slog.Info("received event", "ID", e.ID, "IP", c.IP().Group())
 	return nil
 }
 
-func Query(ctx context.Context, c rely.Client, f nostr.Filters) ([]nostr.Event, error) {
-	log.Printf("received filters %v", f)
+func LogReq(ctx context.Context, c rely.Client, id string, f nostr.Filters) ([]nostr.Event, error) {
+	slog.Info("received req", "ID", id, "filters", len(f), "IP", c.IP().Group())
 	return nil, nil
 }

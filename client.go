@@ -314,7 +314,7 @@ func (c *client) handleEvent(e eventRequest) *requestError {
 
 func (c *client) handleReq(req reqRequest) *requestError {
 	for _, reject := range c.relay.Reject.Req {
-		if err := reject(c, req.Filters); err != nil {
+		if err := reject(c, req.id, req.Filters); err != nil {
 			return &requestError{ID: req.id, Err: err}
 		}
 	}
@@ -345,7 +345,7 @@ func (c *client) handleCount(count countRequest) *requestError {
 	}
 
 	for _, reject := range c.relay.Reject.Count {
-		if err := reject(c, count.Filters); err != nil {
+		if err := reject(c, count.id, count.Filters); err != nil {
 			return &requestError{ID: count.id, Err: err}
 		}
 	}

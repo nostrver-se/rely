@@ -64,19 +64,19 @@ func (s *slice[T]) Clear() {
 type RejectHooks struct {
 	// Connection is invoked before establishing a new client connection.
 	// Returning a non-nil error rejects the connection.
-	Connection slice[func(Stats, *http.Request) error]
+	Connection slice[func(stats Stats, r *http.Request) error]
 
 	// Event is invoked before processing an EVENT message.
 	// Returning a non-nil error rejects the event.
-	Event slice[func(Client, *nostr.Event) error]
+	Event slice[func(c Client, event *nostr.Event) error]
 
 	// Req is invoked before processing a REQ message.
 	// Returning a non-nil error rejects the request.
-	Req slice[func(Client, nostr.Filters) error]
+	Req slice[func(c Client, id string, filters nostr.Filters) error]
 
 	// Count is invoked before processing a NIP-45 COUNT request.
 	// Returning a non-nil error rejects the request.
-	Count slice[func(Client, nostr.Filters) error]
+	Count slice[func(c Client, id string, filters nostr.Filters) error]
 }
 
 func DefaultRejectHooks() RejectHooks {
@@ -103,7 +103,7 @@ type OnHooks struct {
 	//   relay.On.Connect = func(c Client) {
 	//       go longOperation(c)
 	//   }
-	Connect func(Client)
+	Connect func(c Client)
 
 	// Disconnect runs immediately after a client has been unregistered and disconnected.
 	// It is guaranteed to run after the Connect hook of the same client.
@@ -114,23 +114,24 @@ type OnHooks struct {
 	//   relay.On.Disconnect = func(c Client) {
 	//       go longOperation(c)
 	//   }
-	Disconnect func(Client)
+	Disconnect func(c Client)
 
 	// Auth is called immediately after a client successfully authenticates.
 	// It can be used to load resources tied to the client’s public key or adjust rate limits.
-	Auth func(Client)
+	Auth func(c Client)
 
 	// Event defines how the relay processes an EVENT, for example by storing it in a database.
-	Event func(Client, *nostr.Event) error
+	Event func(c Client, event *nostr.Event) error
 
-	// Req defines how the relay processes a REQ containing one or more filters,
+	// Req defines how the relay processes a REQ with the provided id, containing one or more filters,
 	// for example by querying the database for matching events.
 	// The provided context is canceled if the client sends the corresponding CLOSE message.
-	Req func(context.Context, Client, nostr.Filters) ([]nostr.Event, error)
+	Req func(ctx context.Context, c Client, id string, filters nostr.Filters) ([]nostr.Event, error)
 
-	// Count defines how the relay processes NIP-45 COUNT requests.
+	// Count defines how the relay processes a NIP-45 COUNT request with the provided id,
+	// containing one ore more filters.
 	// This hook is optional (= nil). If unset, COUNT requests are rejected with [ErrUnsupportedNIP45].
-	Count func(Client, nostr.Filters) (count int64, approx bool, err error)
+	Count func(c Client, id string, filters nostr.Filters) (count int64, approx bool, err error)
 }
 
 func DefaultOnHooks() OnHooks {
@@ -144,12 +145,12 @@ func DefaultOnHooks() OnHooks {
 }
 
 func logEvent(c Client, e *nostr.Event) error {
-	slog.Info("received event ID", slog.String("id", e.ID), slog.String("ip", c.IP().Group()))
+	slog.Info("received event", "ID", e.ID, "IP", c.IP().Group())
 	return nil
 }
 
-func logFilters(ctx context.Context, c Client, f nostr.Filters) ([]nostr.Event, error) {
-	slog.Info("received filters", slog.Int("count", len(f)), slog.String("ip", c.IP().Group()))
+func logFilters(ctx context.Context, c Client, id string, f nostr.Filters) ([]nostr.Event, error) {
+	slog.Info("received req", "ID", id, "filters", len(f), "IP", c.IP().Group())
 	return nil, nil
 }
 
@@ -193,11 +194,11 @@ func InvalidID(c Client, e *nostr.Event) error {
 func InvalidSignature(c Client, e *nostr.Event) error {
 	match, err := e.CheckSignature()
 	if err != nil {
-		return fmt.Errorf("%w: %s", ErrInvalidEventSignature, err.Error())
+		return fmt.Errorf("%w: %s", ErrInvalidEventSig, err.Error())
 	}
 
 	if !match {
-		return ErrInvalidEventSignature
+		return ErrInvalidEventSig
 	}
 	return nil
 }

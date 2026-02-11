@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"errors"
-	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 
@@ -27,27 +27,27 @@ func main() {
 	)
 
 	relay.Reject.Req.Prepend(TooGreedy)
-	relay.On.Event = Save
-	relay.On.Req = Query
+	relay.On.Event = LogEvent
+	relay.On.Req = LogReq
 
 	if err := relay.StartAndServe(ctx, "localhost:3334"); err != nil {
 		panic(err)
 	}
 }
 
-func TooGreedy(client rely.Client, filters nostr.Filters) error {
+func TooGreedy(client rely.Client, id string, filters nostr.Filters) error {
 	if client.RemainingCapacity() < 10 {
 		return errors.New("slow down there chief")
 	}
 	return nil
 }
 
-func Save(c rely.Client, e *nostr.Event) error {
-	log.Printf("received event: %v", e)
+func LogEvent(c rely.Client, e *nostr.Event) error {
+	slog.Info("received event", "ID", e.ID, "IP", c.IP().Group())
 	return nil
 }
 
-func Query(ctx context.Context, c rely.Client, f nostr.Filters) ([]nostr.Event, error) {
-	log.Printf("received filters %v", f)
+func LogReq(ctx context.Context, c rely.Client, id string, f nostr.Filters) ([]nostr.Event, error) {
+	slog.Info("received req", "ID", id, "filters", len(f), "IP", c.IP().Group())
 	return nil, nil
 }

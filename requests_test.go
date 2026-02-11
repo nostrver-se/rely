@@ -73,7 +73,7 @@ func TestParseEvent(t *testing.T) {
 		{
 			name: "invalid",
 			data: []byte(`["EVENT", "sdada"]`),
-			err:  &requestError{Err: ErrInvalidEventRequest},
+			err:  &requestError{Err: ErrInvalidEvent},
 		},
 		{
 			name:     "valid kind 1",
@@ -119,22 +119,22 @@ func TestParseReq(t *testing.T) {
 		{
 			name: "ID not a string",
 			data: []byte(`["REQ", 111, {"kinds": [1]}]`),
-			err:  &requestError{Err: ErrInvalidSubscriptionID},
+			err:  &requestError{Err: ErrInvalidRequestID},
 		},
 		{
 			name: "incorrect length",
 			data: []byte(`["REQ", "abc"]`),
-			err:  &requestError{ID: "abc", Err: ErrInvalidReqRequest},
+			err:  &requestError{ID: "abc", Err: ErrInvalidReq},
 		},
 		{
 			name: "empty ID",
 			data: []byte(`["REQ", "", {"kinds": [1]}]`),
-			err:  &requestError{ID: "", Err: ErrInvalidSubscriptionID},
+			err:  &requestError{ID: "", Err: ErrInvalidRequestID},
 		},
 		{
 			name: "ID is too long",
 			data: []byte(`["REQ", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", {"kinds": [1]}]`),
-			err:  &requestError{ID: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", Err: ErrInvalidSubscriptionID},
+			err:  &requestError{ID: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", Err: ErrInvalidRequestID},
 		},
 		{
 			name:     "valid",
@@ -175,22 +175,22 @@ func TestParseCount(t *testing.T) {
 		{
 			name: "ID not a string",
 			data: []byte(`["COUNT", 111, {"kinds": [1]}]`),
-			err:  &requestError{Err: ErrInvalidSubscriptionID},
+			err:  &requestError{Err: ErrInvalidRequestID},
 		},
 		{
 			name: "incorrect length",
 			data: []byte(`["COUNT", "abc"]`),
-			err:  &requestError{ID: "abc", Err: ErrInvalidCountRequest},
+			err:  &requestError{ID: "abc", Err: ErrInvalidCount},
 		},
 		{
 			name: "empty ID",
 			data: []byte(`["COUNT", "", {"kinds": [1]}]`),
-			err:  &requestError{ID: "", Err: ErrInvalidSubscriptionID},
+			err:  &requestError{ID: "", Err: ErrInvalidRequestID},
 		},
 		{
 			name: "ID is too long",
 			data: []byte(`["COUNT", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", {"kinds": [1]}]`),
-			err:  &requestError{ID: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", Err: ErrInvalidSubscriptionID},
+			err:  &requestError{ID: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", Err: ErrInvalidRequestID},
 		},
 		{
 			name:     "valid",
@@ -231,17 +231,17 @@ func TestParseClose(t *testing.T) {
 		{
 			name: "ID not a string",
 			data: []byte(`["CLOSE", 111]`),
-			err:  &requestError{Err: ErrInvalidSubscriptionID},
+			err:  &requestError{Err: ErrInvalidRequestID},
 		},
 		{
 			name: "empty ID",
 			data: []byte(`["CLOSE", ""]`),
-			err:  &requestError{ID: "", Err: ErrInvalidSubscriptionID},
+			err:  &requestError{ID: "", Err: ErrInvalidRequestID},
 		},
 		{
 			name: "ID is too long",
 			data: []byte(`["CLOSE", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]`),
-			err:  &requestError{ID: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", Err: ErrInvalidSubscriptionID},
+			err:  &requestError{ID: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", Err: ErrInvalidRequestID},
 		},
 		{
 			name:     "valid",

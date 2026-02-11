@@ -54,45 +54,44 @@ func (p *processor) Run() {
 }
 
 // Process a single request based on its type, by applying the user defined [Hooks].
-func (p *processor) Process(request request) {
-	ID := request.ID()
-	switch request := request.(type) {
+func (p *processor) Process(r request) {
+	switch r := r.(type) {
 	case eventRequest:
-		err := p.relay.On.Event(request.client, request.Event)
+		err := p.relay.On.Event(r.client, r.Event)
 		if err != nil {
-			request.client.send(okResponse{ID: ID, Saved: false, Reason: err.Error()})
+			r.client.send(okResponse{ID: r.Event.ID, Saved: false, Reason: err.Error()})
 			return
 		}
 
-		request.client.send(okResponse{ID: ID, Saved: true})
-		p.relay.Broadcast(request.Event)
+		r.client.send(okResponse{ID: r.Event.ID, Saved: true})
+		p.relay.Broadcast(r.Event)
 
 	case reqRequest:
-		budget := request.client.RemainingCapacity()
-		ApplyBudget(budget, request.Filters...)
+		budget := r.client.RemainingCapacity()
+		ApplyBudget(budget, r.Filters...)
 
-		events, err := p.relay.On.Req(request.ctx, request.client, request.Filters)
+		events, err := p.relay.On.Req(r.ctx, r.client, r.id, r.Filters)
 		if err != nil {
-			if request.ctx.Err() == nil {
+			if r.ctx.Err() == nil {
 				// error not caused by the user's CLOSE, so we must close the subscription
-				request.client.CloseSubWithReason(ID, err.Error())
+				r.client.CloseSubWithReason(r.id, err.Error())
 			}
 			return
 		}
 
 		for i := range events {
-			request.client.send(eventResponse{ID: ID, Event: &events[i]})
+			r.client.send(eventResponse{ID: r.id, Event: &events[i]})
 		}
-		request.client.send(eoseResponse{ID: ID})
+		r.client.send(eoseResponse{ID: r.id})
 
 	case countRequest:
-		count, approx, err := p.relay.On.Count(request.client, request.Filters)
+		count, approx, err := p.relay.On.Count(r.client, r.id, r.Filters)
 		if err != nil {
-			request.client.send(closedResponse{ID: ID, Reason: err.Error()})
+			r.client.send(closedResponse{ID: r.id, Reason: err.Error()})
 			return
 		}
 
-		request.client.send(countResponse{ID: ID, Count: count, Approx: approx})
+		r.client.send(countResponse{ID: r.id, Count: count, Approx: approx})
 	}
 }
 

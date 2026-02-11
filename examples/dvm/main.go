@@ -57,7 +57,7 @@ func Process(_ rely.Client, request *nostr.Event) error {
 	}
 }
 
-func Query(ctx context.Context, _ rely.Client, filters nostr.Filters) ([]nostr.Event, error) {
+func Query(ctx context.Context, _ rely.Client, _ string, filters nostr.Filters) ([]nostr.Event, error) {
 	events := make([]nostr.Event, 0, 100) // pre-allocating
 	for _, event := range store {
 		if filters.Match(event) {

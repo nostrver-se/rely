@@ -127,7 +127,7 @@ func dummyOnEvent(c rely.Client, e *nostr.Event) error {
 	return nil
 }
 
-func dummyOnReq(ctx context.Context, c rely.Client, f nostr.Filters) ([]nostr.Event, error) {
+func dummyOnReq(ctx context.Context, c rely.Client, id string, f nostr.Filters) ([]nostr.Event, error) {
 	processed.Add(1)
 	if rg.Float32() < relayFailProbability {
 		return nil, errors.New("failed")
@@ -145,7 +145,7 @@ func dummyOnReq(ctx context.Context, c rely.Client, f nostr.Filters) ([]nostr.Ev
 
 	return nil, nil
 }
-func dummyOnCount(c rely.Client, f nostr.Filters) (int64, bool, error) {
+func dummyOnCount(c rely.Client, id string, f nostr.Filters) (int64, bool, error) {
 	processed.Add(1)
 	if rg.Float32() < relayFailProbability {
 		return 0, false, errors.New("failed")

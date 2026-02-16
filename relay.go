@@ -296,7 +296,7 @@ func (r *Relay) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 func (r *Relay) ServeWS(w http.ResponseWriter, req *http.Request) {
 	conn, err := r.WS.upgrader.Upgrade(w, req, nil)
 	if err != nil {
-		r.log.Error("failed to upgrade to websocket", "error", err)
+		r.log.Debug("failed to upgrade to websocket", "error", err)
 		return
 	}
 

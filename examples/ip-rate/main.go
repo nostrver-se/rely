@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -52,5 +52,5 @@ func BadIP(s rely.Stats, req *http.Request) error {
 }
 
 func PrintIP(c rely.Client) {
-	log.Printf("registered client with IP %s", c.IP())
+	slog.Info("registered client", "ip", c.IP().Group())
 }

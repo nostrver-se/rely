@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"errors"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -84,11 +84,11 @@ func Welcome(w http.ResponseWriter, r *http.Request) {
 }
 
 func Save(c rely.Client, e *nostr.Event) error {
-	log.Printf("received event: %v", e)
+	slog.Info("received event", "id", e.ID)
 	return nil
 }
 
 func Query(ctx context.Context, c rely.Client, id string, f nostr.Filters) ([]nostr.Event, error) {
-	log.Printf("received filters %v", f)
+	slog.Info("received req", "id", id, "filters", f)
 	return nil, nil
 }

@@ -37,14 +37,14 @@ func main() {
 
 func LogEvent(logger *slog.Logger) func(c rely.Client, e *nostr.Event) error {
 	return func(c rely.Client, e *nostr.Event) error {
-		logger.Info("received event", "ID", e.ID, "IP", c.IP().Group())
+		logger.Info("received event", "id", e.ID, "ip", c.IP().Group())
 		return nil
 	}
 }
 
 func LogReq(logger *slog.Logger) func(ctx context.Context, c rely.Client, id string, f nostr.Filters) ([]nostr.Event, error) {
 	return func(ctx context.Context, c rely.Client, id string, f nostr.Filters) ([]nostr.Event, error) {
-		logger.Info("received req", "ID", id, "filters", len(f), "IP", c.IP().Group())
+		logger.Info("received req", "id", id, "filters", len(f), "ip", c.IP().Group())
 		return nil, nil
 	}
 }

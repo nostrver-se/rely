@@ -90,7 +90,7 @@ func (d *dispatcher) Run() {
 		case event := <-d.broadcast:
 			err := d.Broadcast(event)
 			if err != nil {
-				d.relay.log.Error("failed to broadcast event", "eventID", event.ID, "error", err)
+				d.relay.log.Error("failed to broadcast event", "id", event.ID, "error", err)
 			}
 		}
 	}

@@ -104,7 +104,7 @@ type OnHooks struct {
 
 	// Event defines how the relay processes an EVENT, allowing to define custom messages and broadcast behavior.
 	// This hook is for example used to save an event in the database.
-	// Return [Success] to acknowledge the event as saved and broadcast it, or [Fail] to acknowledge it as not saved.
+	// Return [Success] to acknowledge the event as accepted and broadcast it, or [Fail] to acknowledge a failure.
 	Event func(c Client, event *nostr.Event) EventResult
 
 	// Req defines how the relay processes a REQ with the provided id, containing one or more filters,
@@ -133,7 +133,7 @@ func Success() EventResult {
 	return EventResult{}
 }
 
-// Fail instructs the relay to send OK(false) to the client with the given reason.
+// Fail instructs the relay to send OK(false, reason) to the client with the given reason.
 func Fail(reason string) EventResult {
 	return EventResult{failed: true, noBroadcast: true, reason: reason}
 }
@@ -151,8 +151,8 @@ func (r EventResult) Broadcast() EventResult {
 }
 
 // WithReply adds a message to the OK response sent to the client.
-func (r EventResult) WithReply(reason string) EventResult {
-	r.reason = reason
+func (r EventResult) WithReply(msg string) EventResult {
+	r.reason = msg
 	return r
 }
 

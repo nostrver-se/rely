@@ -113,7 +113,7 @@ type Client interface {
 	Disconnect()
 
 	// All other methods...
-	// (don't fear, there are be comments and docs for all methods)
+	// (don't fear, there are comments and docs for all methods)
 }
 ```
 
@@ -124,7 +124,7 @@ Rely is completely written in Go, a memory-safe and low level language that is e
 These features are extensively used in rely, creating a lock-free architecture on the hot-paths.  
 Inspired by [strfry](https://github.com/hoytech/strfry), rely also implements inverted indexes for matching broadcasted events with subscriptions, making this crucial operation very efficient. For more, check out the [architecture section](#architecture).
 
-All of these optimizations allow a [dummy implementation](https://github.com/pippellia-btc/rely/blob/main/tests/random_test.go) using rely to serve 8000+ concurrent "spammy" clients with less than 1GB of RAM on a 2017 i5 CPU (4-cores).
+All of these optimizations allow a [dummy implementation](https://github.com/pippellia-btc/rely/blob/main/tests/random_test.go) using rely to serve 8000+ "spammy" clients with less than 1GB of RAM on a 2017 i5 CPU (4-cores).
 
 ## Secure by Design
 

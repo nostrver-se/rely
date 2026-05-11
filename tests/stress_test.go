@@ -115,16 +115,16 @@ func dummyOnConnect(c rely.Client) {
 	}
 }
 
-func dummyOnEvent(c rely.Client, e *nostr.Event) error {
+func dummyOnEvent(c rely.Client, e *nostr.Event) rely.EventResult {
 	processed.Add(1)
 	if rg.Float32() < relayFailProbability {
-		return errors.New("failed")
+		return rely.Fail("failed")
 	}
 
 	if rg.Float32() < relayDisconnectProbability {
 		c.Disconnect()
 	}
-	return nil
+	return rely.Success()
 }
 
 func dummyOnReq(ctx context.Context, c rely.Client, id string, f nostr.Filters) ([]nostr.Event, error) {

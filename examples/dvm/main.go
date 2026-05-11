@@ -6,6 +6,7 @@ import (
 	"math/rand/v2"
 	"os"
 	"os/signal"
+	"slices"
 
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/pippellia-btc/rely"
@@ -32,6 +33,9 @@ func main() {
 		rely.WithMaxProcessors(10),     // increase concurrent processors for faster execution (higher CPU)
 	)
 
+	relay.Reject.Event.Append(
+		KindNotIn([]int{5500}),
+	)
 	relay.On.Event = Process
 	relay.On.Req = Query
 
@@ -40,21 +44,28 @@ func main() {
 	}
 }
 
-func Process(_ rely.Client, request *nostr.Event) error {
-	switch request.Kind {
-	case 5500:
-		// malware scanning DVM
-		response := MalwareScan(request)
-
-		// store so it can later be retrieved
-		store = append(store, response)
-
-		relay.Broadcast(response)
-		return nil
-
-	default:
+// KindNotIn returns a filter function that rejects events with a kind not in the given list.
+func KindNotIn(kinds []int) func(rely.Client, *nostr.Event) error {
+	return func(_ rely.Client, e *nostr.Event) error {
+		if slices.Contains(kinds, e.Kind) {
+			return nil
+		}
 		return errors.New("unsupported kind")
 	}
+}
+
+func Process(_ rely.Client, request *nostr.Event) rely.EventResult {
+	// malware scanning DVM
+	response := MalwareScan(request)
+
+	// store so it can later be retrieved
+	store = append(store, response)
+
+	// broadcast the response to all clients right away
+	relay.Broadcast(response)
+
+	// we don't need to save the request, nor to broadcast it to other clients.
+	return rely.Success().NoBroadcast()
 }
 
 func Query(ctx context.Context, _ rely.Client, _ string, filters nostr.Filters) ([]nostr.Event, error) {

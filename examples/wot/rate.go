@@ -98,3 +98,17 @@ func (l *Limiter) cleaner(ctx context.Context) {
 		}
 	}
 }
+
+func pkRefill(rank float64) Refill {
+	return func(b *Bucket) {
+		if time.Since(b.lastRequest) > 24*time.Hour {
+			b.tokens = int(rank * relayBudget)
+		}
+	}
+}
+
+func ipRefill(b *Bucket) {
+	if time.Since(b.lastRequest) > 24*time.Hour {
+		b.tokens = ipTokens
+	}
+}

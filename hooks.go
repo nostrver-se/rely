@@ -102,8 +102,10 @@ type OnHooks struct {
 	// It can be used to load resources tied to the client’s public key or adjust rate limits.
 	Auth func(c Client)
 
-	// Event defines how the relay processes an EVENT, for example by storing it in a database.
-	Event func(c Client, event *nostr.Event) error
+	// Event defines how the relay processes an EVENT, allowing to define custom messages and broadcast behavior.
+	// This hook is for example used to save an event in the database.
+	// Return [Success] to acknowledge the event as saved and broadcast it, or [Fail] to acknowledge it as not saved.
+	Event func(c Client, event *nostr.Event) EventResult
 
 	// Req defines how the relay processes a REQ with the provided id, containing one or more filters,
 	// for example by querying the database for matching events.
@@ -116,6 +118,44 @@ type OnHooks struct {
 	Count func(c Client, id string, filters nostr.Filters) (count int64, approx bool, err error)
 }
 
+// EventResult is returned from [OnHooks.Event] to instruct the relay on
+// how to respond to the client and whether to broadcast the event.
+// The zero value indicates the event was accepted and should be broadcast.
+// Use the convenience functions [Success] and [Fail] to create results.
+type EventResult struct {
+	failed      bool
+	noBroadcast bool
+	reason      string
+}
+
+// Success instructs the relay to send OK(true) to the client and broadcast the event.
+func Success() EventResult {
+	return EventResult{}
+}
+
+// Fail instructs the relay to send OK(false) to the client with the given reason.
+func Fail(reason string) EventResult {
+	return EventResult{failed: true, noBroadcast: true, reason: reason}
+}
+
+// NoBroadcast instructs the relay to skip broadcasting the event.
+func (r EventResult) NoBroadcast() EventResult {
+	r.noBroadcast = true
+	return r
+}
+
+// Broadcast instructs the relay to broadcast the event, even if processing failed.
+func (r EventResult) Broadcast() EventResult {
+	r.noBroadcast = false
+	return r
+}
+
+// WithReply adds a message to the OK response sent to the client.
+func (r EventResult) WithReply(reason string) EventResult {
+	r.reason = reason
+	return r
+}
+
 func DefaultOnHooks() OnHooks {
 	return OnHooks{
 		Connect:    func(Client) {},
@@ -126,9 +166,9 @@ func DefaultOnHooks() OnHooks {
 	}
 }
 
-func logEvent(c Client, e *nostr.Event) error {
+func logEvent(c Client, e *nostr.Event) EventResult {
 	slog.Info("received event", "id", e.ID, "ip", c.IP().Group())
-	return nil
+	return Success()
 }
 
 func logFilters(ctx context.Context, c Client, id string, f nostr.Filters) ([]nostr.Event, error) {
@@ -196,8 +236,8 @@ func RegistrationFailWithin(d time.Duration) func(Stats, *http.Request) error {
 	}
 }
 
-// DisconnectOnDrops returns a When.GreedyClient function that sends a notice and
-// disconnects the client if it dropped more than the maximum responses.
+// DisconnectOnDrops returns a When.GreedyClient function that disconnects the client
+// if it dropped more than the maximum responses.
 func DisconnectOnDrops(maxDropped int) func(c Client) {
 	return func(c Client) {
 		if c.DroppedResponses() > maxDropped {

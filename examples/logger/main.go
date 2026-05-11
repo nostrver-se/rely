@@ -35,10 +35,10 @@ func main() {
 	}
 }
 
-func LogEvent(logger *slog.Logger) func(c rely.Client, e *nostr.Event) error {
-	return func(c rely.Client, e *nostr.Event) error {
+func LogEvent(logger *slog.Logger) func(c rely.Client, e *nostr.Event) rely.EventResult {
+	return func(c rely.Client, e *nostr.Event) rely.EventResult {
 		logger.Info("received event", "id", e.ID, "ip", c.IP().Group())
-		return nil
+		return rely.Success()
 	}
 }
 

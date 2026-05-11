@@ -42,9 +42,9 @@ func TooGreedy(client rely.Client, id string, filters nostr.Filters) error {
 	return nil
 }
 
-func LogEvent(c rely.Client, e *nostr.Event) error {
+func LogEvent(c rely.Client, e *nostr.Event) rely.EventResult {
 	slog.Info("received event", "id", e.ID, "ip", c.IP().Group())
-	return nil
+	return rely.Success()
 }
 
 func LogReq(ctx context.Context, c rely.Client, id string, f nostr.Filters) ([]nostr.Event, error) {

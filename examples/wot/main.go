@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"time"
 
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/pippellia-btc/rely"
@@ -47,41 +46,23 @@ func main() {
 		rely.WithoutMultiAuth(),               // enforcing max one pubkey per client
 	)
 
-	relay.Reject.Connection.Prepend(func(_ rely.Stats, r *http.Request) error {
-		// rate limiting IPs
-		ip := rely.GetIP(r).Group()
-		if limiter.Allow(ip, ipRefill) {
-			return nil
-		}
-		return errors.New("rate-limited: please try again in a few hours")
-	})
+	// apply connection-level ip rate limiting
+	relay.Reject.Connection.Prepend(RateLimitConn)
 
 	// send an AUTH challenge as soon as the client connects
 	relay.On.Connect = func(c rely.Client) { c.SendAuth() }
 
-	relay.On.Event = func(c rely.Client, e *nostr.Event) error {
-		pubkeys := c.Pubkeys()
-		if len(pubkeys) == 0 {
-			return errors.New("auth-required: you must be authenticated with exactly one pubkey to write here")
-		}
+	// reject events from clients that are not authenticated, or have exhausted their pubkey rate limit
+	relay.Reject.Event.Append(
+		NotAuthed,
+		RateLimitPubkey,
+	)
 
-		pubkey := pubkeys[0]
-		rank, exists := cache.Rank(pubkey)
-		if !exists {
-			// If the client IP has enough tokens, the pubkey is queued for ranking by Vertex;
-			// otherwise we disconnect the client as this is probably an attacker trying to waste our backend budget.
-			if !limiter.Allow(c.IP().Group(), ipRefill) {
-				c.Disconnect()
-				return errors.New("rate-limited: please try again in a few hours")
-			}
-
-			cache.refresh <- pubkey
+	relay.On.Event = func(c rely.Client, e *nostr.Event) rely.EventResult {
+		if err := Save(e); err != nil {
+			return rely.Fail(err.Error())
 		}
-
-		if !limiter.Allow(pubkey, pkRefill(rank)) {
-			return errors.New("rate-limited: please try again in a few hours")
-		}
-		return Save(e)
+		return rely.Success()
 	}
 
 	if err := relay.StartAndServe(ctx, "localhost:3334"); err != nil {
@@ -89,18 +70,41 @@ func main() {
 	}
 }
 
-func pkRefill(rank float64) Refill {
-	return func(b *Bucket) {
-		if time.Since(b.lastRequest) > 24*time.Hour {
-			b.tokens = int(rank * relayBudget)
-		}
+// RateLimitConn is a connection-level rate limiter.
+func RateLimitConn(_ rely.Stats, r *http.Request) error {
+	// rate limiting IPs
+	ip := rely.GetIP(r).Group()
+	if limiter.Allow(ip, ipRefill) {
+		return nil
 	}
+	return errors.New("rate-limited: please try again in a few hours")
 }
 
-func ipRefill(b *Bucket) {
-	if time.Since(b.lastRequest) > 24*time.Hour {
-		b.tokens = ipTokens
+func NotAuthed(c rely.Client, _ *nostr.Event) error {
+	if c.IsAuthed() {
+		return nil
 	}
+	return errors.New("auth-required: you must be authenticated with exactly one pubkey to write here")
+}
+
+func RateLimitPubkey(c rely.Client, _ *nostr.Event) error {
+	pubkey := c.Pubkeys()[0]
+	rank, found := cache.Rank(pubkey)
+	if !found {
+		// If the client IP has enough tokens, the pubkey is queued for ranking by Vertex;
+		// otherwise we disconnect the client as this is probably an attacker trying to waste our backend budget.
+		if !limiter.Allow(c.IP().Group(), ipRefill) {
+			c.Disconnect()
+			return errors.New("rate-limited: please try again in a few hours")
+		}
+
+		cache.refresh <- pubkey
+	}
+
+	if !limiter.Allow(pubkey, pkRefill(rank)) {
+		return errors.New("rate-limited: please try again in a few hours")
+	}
+	return nil
 }
 
 func Save(e *nostr.Event) error {

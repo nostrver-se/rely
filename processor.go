@@ -57,14 +57,12 @@ func (p *processor) Run() {
 func (p *processor) Process(r request) {
 	switch r := r.(type) {
 	case eventRequest:
-		err := p.relay.On.Event(r.client, r.Event)
-		if err != nil {
-			r.client.send(okResponse{ID: r.Event.ID, Saved: false, Reason: err.Error()})
-			return
-		}
+		res := p.relay.On.Event(r.client, r.Event)
+		r.client.send(okResponse{ID: r.Event.ID, Saved: !res.failed, Reason: res.reason})
 
-		r.client.send(okResponse{ID: r.Event.ID, Saved: true})
-		p.relay.Broadcast(r.Event)
+		if !res.noBroadcast {
+			p.relay.Broadcast(r.Event)
+		}
 
 	case reqRequest:
 		budget := r.client.RemainingCapacity()

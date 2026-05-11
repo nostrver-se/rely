@@ -83,9 +83,9 @@ func Welcome(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(response))
 }
 
-func Save(c rely.Client, e *nostr.Event) rely.EventResult {
+func Save(c rely.Client, e *nostr.Event) error {
 	slog.Info("received event", "id", e.ID)
-	return rely.Success()
+	return nil
 }
 
 func Query(ctx context.Context, c rely.Client, id string, f nostr.Filters) ([]nostr.Event, error) {

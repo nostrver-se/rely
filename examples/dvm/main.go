@@ -54,7 +54,7 @@ func KindNotIn(kinds []int) func(rely.Client, *nostr.Event) error {
 	}
 }
 
-func Process(_ rely.Client, request *nostr.Event) rely.EventResult {
+func Process(_ rely.Client, request *nostr.Event) error {
 	// malware scanning DVM
 	response := MalwareScan(request)
 
@@ -64,8 +64,8 @@ func Process(_ rely.Client, request *nostr.Event) rely.EventResult {
 	// broadcast the response to all clients right away
 	relay.Broadcast(response)
 
-	// we don't need to save the request, nor to broadcast it to other clients.
-	return rely.Success().NoBroadcast()
+	// we don't need to save the request
+	return nil
 }
 
 func Query(ctx context.Context, _ rely.Client, _ string, filters nostr.Filters) ([]nostr.Event, error) {

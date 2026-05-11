@@ -58,11 +58,11 @@ func main() {
 		RateLimitPubkey,
 	)
 
-	relay.On.Event = func(c rely.Client, e *nostr.Event) rely.EventResult {
+	relay.On.Event = func(c rely.Client, e *nostr.Event) error {
 		if err := Save(e); err != nil {
-			return rely.Fail(err.Error())
+			return err
 		}
-		return rely.Success()
+		return nil
 	}
 
 	if err := relay.StartAndServe(ctx, "localhost:3334"); err != nil {

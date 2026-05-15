@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/nbd-wtf/go-nostr"
-	"github.com/pippellia-btc/rely/v2/tests"
+	"github.com/pippellia-btc/rely/v2/utils"
 	"github.com/pippellia-btc/slicex"
 	"github.com/pippellia-btc/smallset"
 )
@@ -21,7 +21,7 @@ func init() {
 		id := strconv.Itoa(i)
 		sub := subscription{
 			id:      id,
-			filters: tests.RandomFilters(),
+			filters: utils.RandomFilters(),
 			client:  &client{uid: id},
 		}
 
@@ -160,7 +160,7 @@ func BenchmarkCandidates(b *testing.B) {
 		d.Index(sub)
 	}
 
-	event := tests.RandomEvent()
+	event := utils.RandomEvent()
 	b.ResetTimer()
 	for range b.N {
 		d.Candidates(&event)

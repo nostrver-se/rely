@@ -1,11 +1,62 @@
 package utils
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand/v2"
 
 	"github.com/nbd-wtf/go-nostr"
 )
+
+// RandomEventBytes returns a random EVENT request in wire-format.
+func RandomEventBytes() []byte {
+	event := []any{"EVENT", RandomEvent()}
+	data, err := json.Marshal(event)
+	if err != nil {
+		panic(fmt.Errorf("failed to marshal event %v: %w", event, err))
+	}
+	return data
+}
+
+// RandomReqBytes returns a random REQ request in wire-format.
+func RandomReqBytes() []byte {
+	req := []any{"REQ", RandomString()}
+	filters := rand.IntN(10)
+	for range filters {
+		req = append(req, RandomFilter())
+	}
+
+	data, err := json.Marshal(req)
+	if err != nil {
+		panic(fmt.Errorf("failed to marshal req %v: %w", req, err))
+	}
+	return data
+}
+
+// RandomCountBytes returns a random COUNT request in wire-format.
+func RandomCountBytes() []byte {
+	count := []any{"COUNT", RandomString()}
+	filters := rand.IntN(10)
+	for range filters {
+		count = append(count, RandomFilter())
+	}
+
+	data, err := json.Marshal(count)
+	if err != nil {
+		panic(fmt.Errorf("failed to marshal count %v: %w", count, err))
+	}
+	return data
+}
+
+// RandomCloseBytes returns a random CLOSE request in wire-format.
+func RandomCloseBytes() []byte {
+	close := []any{"CLOSE", RandomString()}
+	data, err := json.Marshal(close)
+	if err != nil {
+		panic(fmt.Errorf("failed to marshal close %v: %w", close, err))
+	}
+	return data
+}
 
 // RandomEvents returns a slice of random events.
 func RandomEvents() []nostr.Event {

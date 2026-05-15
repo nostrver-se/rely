@@ -26,7 +26,7 @@ type BroadcastConfig struct {
 }
 
 func defaultBroadcastConfig() BroadcastConfig {
-	d := 30 * time.Second
+	d := 60 * time.Second
 	return BroadcastConfig{
 		Address:       "localhost:3334",
 		TestDuration:  d,

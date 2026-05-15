@@ -24,11 +24,11 @@ type ClientConfig struct {
 func DefaultClientConfig() ClientConfig {
 	return ClientConfig{
 		WriteWait:             10 * time.Second,
-		WriteInterval:         1 * time.Second,
+		WriteInterval:         500 * time.Millisecond,
 		PongWait:              60 * time.Second,
 		PingPeriod:            (60 * time.Second) / 2,
 		MaxMessageSize:        500_000,
-		DisconnectProbability: 0.01,
+		DisconnectProbability: 0.001,
 	}
 }
 

@@ -2,6 +2,7 @@ package swarm
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"math/rand/v2"
 
@@ -36,7 +37,7 @@ func (b BehaviorDistribution) Validate() error {
 		total += wb.P
 	}
 	if math.Abs(total-1) > 1e-5 {
-		return errors.New("probabilities must sum to 1")
+		return fmt.Errorf("probabilities must sum to 1: %f", total)
 	}
 	return nil
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"math/rand/v2"
 	"net/http"
 	_ "net/http/pprof"
@@ -28,7 +27,7 @@ type FuzzyConfig struct {
 	Address                        string
 	TestDuration                   time.Duration
 	RelayDuration                  time.Duration
-	AttackDuration                 time.Duration
+	SwarmDuration                  time.Duration
 	FailProbability                float32
 	DisconnectProbability          float32
 	SubscriptionClosureProbability float32
@@ -41,7 +40,7 @@ func defaultFuzzyConfig() FuzzyConfig {
 		Address:                        "localhost:3334",
 		TestDuration:                   d,
 		RelayDuration:                  d - 10*time.Second,
-		AttackDuration:                 d - 20*time.Second,
+		SwarmDuration:                  d - 20*time.Second,
 		FailProbability:                0.001,
 		DisconnectProbability:          0.001,
 		SubscriptionClosureProbability: 0.0001,
@@ -60,21 +59,22 @@ func TestFuzzy(t *testing.T) {
 	processed := atomic.Int64{}
 
 	t.Logf("generating random request templates")
-	templates := generateTemplates(1000)
+	templates := generateTemplates(10_000)
 	t.Logf("finished in %v", time.Since(start))
 	t.Logf("starting up the relay and swarm")
 
 	ctx, cancel := context.WithTimeout(context.Background(), config.TestDuration)
 	defer cancel()
 
-	f, err := os.OpenFile("test.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	logger, err := newFileLogger("test.log")
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
-	defer f.Close()
+	defer logger.Close()
 
-	l := slog.New(slog.NewTextHandler(f, &slog.HandlerOptions{Level: slog.LevelError}))
-	relay := rely.NewRelay(rely.WithLogger(l))
+	relay := rely.NewRelay(
+		rely.WithLogger(logger.Logger),
+	)
 
 	// Step 1: register relay dummy function hooks.
 	// The hooks simulate random failures and disconnects.
@@ -132,17 +132,18 @@ func TestFuzzy(t *testing.T) {
 	}
 
 	// Step 3: run everything.
+	relayErr := make(chan error, 1)
 	go func() {
 		ctx, cancel := context.WithTimeout(ctx, config.RelayDuration)
 		defer cancel()
 		go displayStats(ctx, "fuzzy", start, &processed, relay, swarm)
 		if err := relay.StartAndServe(ctx, config.Address); err != nil {
-			panic(err)
+			relayErr <- err
 		}
 	}()
 
 	go func() {
-		ctx, cancel := context.WithTimeout(ctx, config.AttackDuration)
+		ctx, cancel := context.WithTimeout(ctx, config.SwarmDuration)
 		defer cancel()
 		swarm.Run(ctx, config.Address)
 	}()
@@ -150,8 +151,11 @@ func TestFuzzy(t *testing.T) {
 	go func() { http.ListenAndServe(":6060", nil) }() // pprof
 
 	select {
+	case err := <-relayErr:
+		t.Fatalf("relay error: %v", err)
+
 	case err := <-swarm.Err():
-		t.Fatal(err)
+		t.Fatalf("swarm error: %v", err)
 
 	case <-ctx.Done():
 		// test passed, print stats last time
@@ -167,11 +171,11 @@ type fuzzyEventClient struct {
 	t *templates
 }
 
-func (f fuzzyEventClient) NextRequest() []byte {
-	return f.t.quickEvent()
+func (c fuzzyEventClient) NextRequest() []byte {
+	return c.t.quickEvent()
 }
 
-func (f fuzzyEventClient) ValidateResponse(d *json.Decoder) error {
+func (c fuzzyEventClient) ValidateResponse(d *json.Decoder) error {
 	return validateLabel("OK", "NOTICE")(d)
 }
 
@@ -182,11 +186,11 @@ type fuzzyReqClient struct {
 	t *templates
 }
 
-func (f fuzzyReqClient) NextRequest() []byte {
-	return f.t.quickReq()
+func (c fuzzyReqClient) NextRequest() []byte {
+	return c.t.quickReq()
 }
 
-func (f fuzzyReqClient) ValidateResponse(d *json.Decoder) error {
+func (c fuzzyReqClient) ValidateResponse(d *json.Decoder) error {
 	return validateLabel("EOSE", "CLOSED", "EVENT", "NOTICE")(d)
 }
 
@@ -197,11 +201,11 @@ type fuzzyCountClient struct {
 	t *templates
 }
 
-func (f fuzzyCountClient) NextRequest() []byte {
-	return f.t.quickCount()
+func (c fuzzyCountClient) NextRequest() []byte {
+	return c.t.quickCount()
 }
 
-func (f fuzzyCountClient) ValidateResponse(d *json.Decoder) error {
+func (c fuzzyCountClient) ValidateResponse(d *json.Decoder) error {
 	return validateLabel("CLOSED", "COUNT", "NOTICE")(d)
 }
 
@@ -212,16 +216,16 @@ type fuzzyCloseClient struct {
 	t *templates
 }
 
-func (f fuzzyCloseClient) NextRequest() []byte {
-	return f.t.quickClose()
+func (c fuzzyCloseClient) NextRequest() []byte {
+	return c.t.quickClose()
 }
 
-func (f fuzzyCloseClient) ValidateResponse(d *json.Decoder) error {
+func (c fuzzyCloseClient) ValidateResponse(d *json.Decoder) error {
 	return validateLabel("NOTICE")(d)
 }
 
 // templates holds the request templates for REQ, COUNT, EVENT, and CLOSE requests.
-// It's `quick` methods return a random request template with modified bytes, allowing
+// Its `quick` methods return a random request template with modified bytes, allowing
 // much faster fuzzing compared to regenerating new requests from scratch.
 type templates struct {
 	req   [][]byte

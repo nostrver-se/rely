@@ -4,6 +4,17 @@ A framework for building super custom [Nostr](https://github.com/nostr-protocol/
 <a href="https://pkg.go.dev/github.com/pippellia-btc/rely"><img src="https://pkg.go.dev/badge/github.com/pippellia-btc/rely.svg" alt="Go Reference"></a>
 [![Go Report Card](https://goreportcard.com/badge/github.com/pippellia-btc/rely)](https://goreportcard.com/report/github.com/pippellia-btc/rely)
 
+## Nyves relay features
+
+`relay/rely_nyves.go`
+
+- [ ] Allowlist / invite list with pubkeys which are allowed to sent events which are stored on the relay
+- [ ] Enable NIP-42 authentication for all the pubkeys on the allowlist
+- [ ] Use SQLite as a database
+- [ ] NIP-50 Search Capability
+- [x] NIP-45 Count
+- [x] NIP-11 Relay Information
+
 ## Installation
 ```
 go get github.com/pippellia-btc/rely
